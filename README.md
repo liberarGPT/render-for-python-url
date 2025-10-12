@@ -1,3 +1,4 @@
+
 # AlpacaTradingAgent: Enhanced Multi-Agent Alpaca Trading Framework
 
 > 🚀 **AlpacaTradingAgent** - An independent enhanced version built upon the original TradingAgents framework, specifically designed for Alpaca users who want to test or use AI agents to trade on their Alpaca accounts.
@@ -292,3 +293,5 @@ Please reference the original TradingAgents work that inspired this project:
       url={https://arxiv.org/abs/2412.20138}, 
 }
 ```
+
+
