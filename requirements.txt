@@ -83,7 +83,7 @@ alphalens-reloaded>=0.4.0
 # Time Series Analysis
 arch>=6.0.0
 pmdarima>=2.0.0
-gluon-ts>=0.14.0
+# gluon-ts>=0.14.0
 tsfresh>=0.20.0
 tsmoothie>=1.0.0
 
