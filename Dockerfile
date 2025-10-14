@@ -9,7 +9,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies for building some Python packages (lxml, hnswlib, etc.)
+# System dependencies including TA-Lib
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        build-essential \
@@ -20,6 +20,15 @@ RUN apt-get update \
        libxslt1-dev \
        libffi-dev \
        curl \
+       wget \
+    && wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz \
+    && tar -xzf ta-lib-0.4.0-src.tar.gz \
+    && cd ta-lib/ \
+    && ./configure --prefix=/usr \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf ta-lib ta-lib-0.4.0-src.tar.gz \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies first for better layer caching
@@ -43,5 +52,3 @@ EXPOSE 7860
 
 # Default command: bind to 0.0.0.0 for container networking
 CMD ["python", "run_webui_dash.py", "--server-name", "0.0.0.0"]
-
-
