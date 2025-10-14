@@ -7,14 +7,65 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
+import asyncio
+import aiohttp
+from datetime import datetime, timedelta
 
 # Core Data & Analysis
 import pandas as pd
 import numpy as np
+import scipy
+import polars as pl
 
 # Financial Data
 import yfinance as yf
 import alpaca_trade_api as tradeapi
+try:
+    import pandas_datareader as pdr
+except ImportError:
+    pdr = None
+try:
+    from alpha_vantage.timeseries import TimeSeries
+except ImportError:
+    TimeSeries = None
+try:
+    import akshare as ak
+except ImportError:
+    ak = None
+try:
+    import tushare as ts
+except ImportError:
+    ts = None
+try:
+    import yahooquery as yq
+except ImportError:
+    yq = None
+try:
+    import investpy
+except ImportError:
+    investpy = None
+try:
+    import eodhd
+except ImportError:
+    eodhd = None
+try:
+    import finnhub
+except ImportError:
+    finnhub = None
+
+# Social & News Data
+try:
+    import praw
+except ImportError:
+    praw = None
+try:
+    import feedparser
+except ImportError:
+    feedparser = None
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 # Technical Analysis
 try:
@@ -25,6 +76,22 @@ except ImportError:
 
 import pandas_ta as ta_pandas
 from ta import add_all_ta_features
+try:
+    from stockstats import StockDataFrame
+except ImportError:
+    StockDataFrame = None
+try:
+    from finta import TA as FinTA
+except ImportError:
+    FinTA = None
+try:
+    import btalib
+except ImportError:
+    btalib = None
+try:
+    from talipp.indicators import SMA, EMA, RSI, MACD
+except ImportError:
+    SMA = EMA = RSI = MACD = None
 
 # Backtesting
 try:
@@ -37,11 +104,36 @@ try:
 except ImportError:
     Backtest = None
 
+try:
+    import vectorbt as vbt
+except ImportError:
+    vbt = None
+
+try:
+    import pyqstrat
+except ImportError:
+    pyqstrat = None
+
+try:
+    import fastquant
+except ImportError:
+    fastquant = None
+
 # Portfolio Optimization
 try:
     from pypfopt import EfficientFrontier, risk_models, expected_returns
 except ImportError:
     EfficientFrontier = None
+
+try:
+    import riskfolio as rp
+except ImportError:
+    rp = None
+
+try:
+    import cvxpy as cp
+except ImportError:
+    cp = None
 
 # Risk Analytics
 try:
@@ -54,12 +146,21 @@ try:
 except ImportError:
     ep = None
 
-# OpenBB
 try:
-    from openbb import obb
+    import pyfolio as pf
 except ImportError:
-    print("OpenBB not available - install with: pip install openbb")
-    obb = None
+    pf = None
+
+try:
+    from FinQuant.portfolio import build_portfolio
+except ImportError:
+    build_portfolio = None
+
+# Factor Analysis
+try:
+    import alphalens as al
+except ImportError:
+    al = None
 
 # Time Series
 from statsmodels.tsa.arima.model import ARIMA
@@ -67,6 +168,53 @@ try:
     from arch import arch_model
 except ImportError:
     arch_model = None
+
+try:
+    import pmdarima as pm
+except ImportError:
+    pm = None
+
+try:
+    from gluonts.model.deepar import DeepAREstimator
+except ImportError:
+    DeepAREstimator = None
+
+try:
+    from tsfresh import extract_features
+except ImportError:
+    extract_features = None
+
+try:
+    from tsmoothie.smoother import LowessSmoother
+except ImportError:
+    LowessSmoother = None
+
+# Financial Instruments
+try:
+    import QuantLib as ql
+except ImportError:
+    ql = None
+
+try:
+    import vollib
+except ImportError:
+    vollib = None
+
+try:
+    from py_vollib.black_scholes import black_scholes as bs
+except ImportError:
+    bs = None
+
+# ML for Finance
+try:
+    import mlfinlab
+except ImportError:
+    mlfinlab = None
+
+try:
+    from AlphaPy.market import Market
+except ImportError:
+    Market = None
 
 # ML
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
@@ -78,9 +226,67 @@ try:
 except ImportError:
     get_calendar = None
 
+try:
+    import pandas_market_calendars as mcal
+except ImportError:
+    mcal = None
+
 # Visualization
 import mplfinance as mpf
 import plotly.graph_objects as go
+try:
+    import dtale
+except ImportError:
+    dtale = None
+
+try:
+    import finplot as fplt
+except ImportError:
+    fplt = None
+
+# Crypto
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
+# AI/LLM
+try:
+    from langchain_openai import ChatOpenAI
+except ImportError:
+    ChatOpenAI = None
+
+try:
+    from langgraph.graph import StateGraph
+except ImportError:
+    StateGraph = None
+
+try:
+    import chromadb
+except ImportError:
+    chromadb = None
+
+try:
+    import google.generativeai as genai
+except ImportError:
+    genai = None
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:
+    Console = Table = None
+
+# Database
+try:
+    from sqlalchemy import create_engine
+except ImportError:
+    create_engine = None
+
+try:
+    import redis
+except ImportError:
+    redis = None
 
 load_dotenv()
 app = Flask(__name__)
@@ -550,22 +756,371 @@ def health_check():
     })
 
 
+# ============================================================================
+# SOCIAL SENTIMENT ENDPOINTS
+# ============================================================================
+
+@app.route('/api/social/reddit/<symbol>', methods=['GET'])
+def reddit_sentiment(symbol):
+    """Get Reddit sentiment for a stock symbol"""
+    if not praw:
+        return jsonify({'error': 'PRAW not available'}), 400
+    
+    try:
+        # Placeholder - requires Reddit API credentials
+        return jsonify({
+            'symbol': symbol,
+            'sentiment': 'neutral',
+            'mentions': 0,
+            'message': 'Configure Reddit API credentials'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/social/news-feed', methods=['GET'])
+def news_feed():
+    """Get financial news from RSS feeds"""
+    if not feedparser:
+        return jsonify({'error': 'Feedparser not available'}), 400
+    
+    try:
+        feeds = [
+            'https://feeds.finance.yahoo.com/rss/2.0/headline',
+            'https://www.cnbc.com/id/100003114/device/rss/rss.html'
+        ]
+        
+        all_news = []
+        for feed_url in feeds:
+            feed = feedparser.parse(feed_url)
+            for entry in feed.entries[:5]:
+                all_news.append({
+                    'title': entry.title,
+                    'link': entry.link,
+                    'published': entry.get('published', '')
+                })
+        
+        return jsonify({'news': all_news})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# CRYPTO TRADING ENDPOINTS
+# ============================================================================
+
+@app.route('/api/crypto/exchanges', methods=['GET'])
+def list_crypto_exchanges():
+    """List available crypto exchanges via CCXT"""
+    if not ccxt:
+        return jsonify({'error': 'CCXT not available'}), 400
+    
+    try:
+        exchanges = ccxt.exchanges
+        return jsonify({'exchanges': exchanges[:20]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/crypto/ticker/<exchange>/<symbol>', methods=['GET'])
+def get_crypto_ticker(exchange, symbol):
+    """Get crypto ticker data"""
+    if not ccxt:
+        return jsonify({'error': 'CCXT not available'}), 400
+    
+    try:
+        exchange_class = getattr(ccxt, exchange)
+        exchange_instance = exchange_class()
+        ticker = exchange_instance.fetch_ticker(symbol)
+        
+        return jsonify({
+            'exchange': exchange,
+            'symbol': symbol,
+            'last': ticker['last'],
+            'bid': ticker['bid'],
+            'ask': ticker['ask'],
+            'volume': ticker['baseVolume']
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# ADVANCED TECHNICAL ANALYSIS ENDPOINTS
+# ============================================================================
+
+@app.route('/api/analysis/advanced-indicators/<symbol>', methods=['POST'])
+def advanced_indicators(symbol):
+    """Calculate advanced technical indicators using multiple libraries"""
+    try:
+        data = request.json
+        period = data.get('period', '1y')
+        
+        df = yf.Ticker(symbol).history(period=period)
+        results = {}
+        
+        # StockStats indicators
+        if StockDataFrame:
+            stock = StockDataFrame.retype(df.copy())
+            results['macd'] = stock['macd'].iloc[-1] if 'macd' in stock else None
+            results['rsi_14'] = stock['rsi_14'].iloc[-1] if 'rsi_14' in stock else None
+        
+        # FinTA indicators
+        if FinTA:
+            results['bbands'] = {
+                'upper': float(FinTA.BBANDS(df)['BB_UPPER'].iloc[-1]),
+                'middle': float(FinTA.BBANDS(df)['BB_MIDDLE'].iloc[-1]),
+                'lower': float(FinTA.BBANDS(df)['BB_LOWER'].iloc[-1])
+            }
+        
+        return jsonify({
+            'symbol': symbol,
+            'indicators': results
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# OPTIONS PRICING ENDPOINTS
+# ============================================================================
+
+@app.route('/api/options/black-scholes', methods=['POST'])
+def black_scholes_pricing():
+    """Calculate option price using Black-Scholes model"""
+    if not bs:
+        return jsonify({'error': 'py_vollib not available'}), 400
+    
+    try:
+        data = request.json
+        S = data['spot_price']
+        K = data['strike_price']
+        T = data['time_to_expiry']
+        r = data['risk_free_rate']
+        sigma = data['volatility']
+        flag = data.get('option_type', 'c')  # 'c' for call, 'p' for put
+        
+        price = bs(flag, S, K, T, r, sigma)
+        
+        return jsonify({
+            'option_price': float(price),
+            'inputs': data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# ADVANCED TIME SERIES ENDPOINTS
+# ============================================================================
+
+@app.route('/api/timeseries/auto-arima/<symbol>', methods=['POST'])
+def auto_arima_forecast(symbol):
+    """Auto ARIMA forecasting"""
+    if not pm:
+        return jsonify({'error': 'pmdarima not available'}), 400
+    
+    try:
+        data = request.json
+        periods = data.get('periods', 30)
+        
+        df = yf.Ticker(symbol).history(period='2y')
+        prices = df['Close']
+        
+        model = pm.auto_arima(prices, seasonal=False, stepwise=True)
+        forecast = model.predict(n_periods=periods)
+        
+        return jsonify({
+            'symbol': symbol,
+            'forecast': forecast.tolist(),
+            'model_order': model.order
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/timeseries/garch/<symbol>', methods=['POST'])
+def garch_volatility(symbol):
+    """GARCH volatility forecasting"""
+    if not arch_model:
+        return jsonify({'error': 'arch not available'}), 400
+    
+    try:
+        data = request.json
+        periods = data.get('periods', 30)
+        
+        df = yf.Ticker(symbol).history(period='2y')
+        returns = df['Close'].pct_change().dropna() * 100
+        
+        model = arch_model(returns, vol='Garch', p=1, q=1)
+        fitted = model.fit(disp='off')
+        forecast = fitted.forecast(horizon=periods)
+        
+        return jsonify({
+            'symbol': symbol,
+            'volatility_forecast': forecast.variance.values[-1].tolist()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# ADVANCED PORTFOLIO OPTIMIZATION
+# ============================================================================
+
+@app.route('/api/portfolio/risk-parity', methods=['POST'])
+def risk_parity_portfolio():
+    """Risk parity portfolio optimization"""
+    if not rp:
+        return jsonify({'error': 'Riskfolio-Lib not available'}), 400
+    
+    try:
+        data = request.json
+        symbols = data.get('symbols', ['AAPL', 'MSFT', 'GOOGL', 'AMZN'])
+        period = data.get('period', '3y')
+        
+        prices = yf.download(symbols, period=period)['Adj Close']
+        returns = prices.pct_change().dropna()
+        
+        port = rp.Portfolio(returns=returns)
+        port.assets_stats(method_mu='hist', method_cov='hist')
+        
+        w = port.rp_optimization(model='Classic', rm='MV', hist=True)
+        
+        return jsonify({
+            'weights': w.to_dict()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# MARKET CALENDAR ENDPOINTS
+# ============================================================================
+
+@app.route('/api/calendar/trading-days', methods=['GET'])
+def trading_days():
+    """Get trading days for a market"""
+    if not mcal:
+        return jsonify({'error': 'pandas_market_calendars not available'}), 400
+    
+    try:
+        exchange = request.args.get('exchange', 'NYSE')
+        start = request.args.get('start', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+        end = request.args.get('end', datetime.now().strftime('%Y-%m-%d'))
+        
+        calendar = mcal.get_calendar(exchange)
+        schedule = calendar.schedule(start_date=start, end_date=end)
+        
+        return jsonify({
+            'exchange': exchange,
+            'trading_days': schedule.index.strftime('%Y-%m-%d').tolist()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# ALTERNATIVE DATA ENDPOINTS
+# ============================================================================
+
+@app.route('/api/data/akshare/<symbol>', methods=['GET'])
+def get_akshare_data(symbol):
+    """Get Chinese market data via AkShare"""
+    if not ak:
+        return jsonify({'error': 'AkShare not available'}), 400
+    
+    try:
+        # Example: get stock info
+        df = ak.stock_zh_a_hist(symbol=symbol, adjust="qfq")
+        
+        return jsonify({
+            'symbol': symbol,
+            'data': df.tail(100).to_dict(orient='records')
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# FINNHUB ENDPOINTS
+# ============================================================================
+
+@app.route('/api/finnhub/quote/<symbol>', methods=['GET'])
+def finnhub_quote(symbol):
+    """Get real-time quote from Finnhub"""
+    if not finnhub:
+        return jsonify({'error': 'Finnhub not available'}), 400
+    
+    try:
+        api_key = os.getenv('FINNHUB_API_KEY', 'demo')
+        client = finnhub.Client(api_key=api_key)
+        quote = client.quote(symbol)
+        
+        return jsonify({
+            'symbol': symbol,
+            'quote': quote
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/', methods=['GET'])
 def index():
     """Root endpoint"""
     return jsonify({
         'name': 'AgentTrading-Dyad Backend',
-        'version': '1.0.0',
+        'version': '2.0.0',
+        'description': 'Comprehensive quantitative trading platform with 100+ libraries',
         'endpoints': {
-            'data': ['/api/data/stock/<symbol>', '/api/data/market-overview'],
-            'analysis': ['/api/analysis/indicators/<symbol>', '/api/analysis/pattern-recognition/<symbol>'],
+            'data': [
+                '/api/data/stock/<symbol>', 
+                '/api/data/market-overview',
+                '/api/data/akshare/<symbol>'
+            ],
+            'analysis': [
+                '/api/analysis/indicators/<symbol>', 
+                '/api/analysis/pattern-recognition/<symbol>',
+                '/api/analysis/advanced-indicators/<symbol>'
+            ],
             'backtesting': ['/api/backtest/simple-strategy'],
-            'portfolio': ['/api/portfolio/optimize'],
+            'portfolio': [
+                '/api/portfolio/optimize',
+                '/api/portfolio/risk-parity'
+            ],
             'risk': ['/api/risk/analyze/<symbol>'],
-            'timeseries': ['/api/timeseries/forecast/<symbol>'],
+            'timeseries': [
+                '/api/timeseries/forecast/<symbol>',
+                '/api/timeseries/auto-arima/<symbol>',
+                '/api/timeseries/garch/<symbol>'
+            ],
             'ml': ['/api/ml/predict/<symbol>'],
+            'options': ['/api/options/black-scholes'],
+            'social': [
+                '/api/social/reddit/<symbol>',
+                '/api/social/news-feed'
+            ],
+            'crypto': [
+                '/api/crypto/exchanges',
+                '/api/crypto/ticker/<exchange>/<symbol>'
+            ],
+            'calendar': ['/api/calendar/trading-days'],
+            'finnhub': ['/api/finnhub/quote/<symbol>'],
             'openbb': ['/api/openbb/query', '/api/openbb/screener'],
             'trading': ['/api/trading/positions', '/api/trading/order']
+        },
+        'libraries_loaded': {
+            'talib': talib is not None,
+            'ccxt': ccxt is not None,
+            'praw': praw is not None,
+            'feedparser': feedparser is not None,
+            'akshare': ak is not None,
+            'finnhub': finnhub is not None,
+            'riskfolio': rp is not None,
+            'pmdarima': pm is not None,
+            'vectorbt': vbt is not None,
+            'chromadb': chromadb is not None,
+            'genai': genai is not None
         }
     })
 
