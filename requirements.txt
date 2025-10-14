@@ -1,7 +1,7 @@
+# Original AgentTrading-Dyad Dependencies
 typing-extensions
 langchain-openai
 langchain-experimental
-pandas
 praw
 feedparser
 stockstats
@@ -9,24 +9,136 @@ eodhd
 langgraph
 chromadb
 setuptools
-backtrader
-akshare
-tushare
 finnhub-python
 parsel
-requests
-tqdm
 pytz
 redis
 chainlit
 rich
 questionary
-python-dotenv
 gradio
-plotly
 dash>=3.0.0
 dash-bootstrap-components>=2.0.0
-flask>=3.0.0
-alpaca-py>=0.8.2
 beautifulsoup4
 google-generativeai
+
+# Core Web Framework
+flask>=3.0.0
+flask-cors==4.0.0
+
+# Core Numerical & Data Libraries
+numpy==1.26.4
+scipy==1.12.0
+pandas==2.2.0
+polars==0.20.6
+
+# Statistical & ML Libraries
+statsmodels==0.14.1
+scikit-learn==1.4.0
+pymc3==3.11.5
+
+# Financial Data Sources
+yfinance==0.2.35
+pandas-datareader==0.10.0
+alpha-vantage==2.3.1
+alpaca-trade-api==3.1.1
+alpaca-py>=0.8.2
+akshare==1.13.11
+tushare
+yahooquery==2.3.7
+investpy==1.0.8
+FinanceDataReader==0.9.50
+finagg==0.1.7
+
+# OpenBB Platform
+openbb==4.1.6
+
+# Technical Analysis & Indicators
+TA-Lib==0.4.28
+pandas-ta==0.3.14b
+finta==1.3
+ta==0.11.0
+bta-lib==1.0.0
+talipp==2.1.0
+
+# Backtesting & Trading Frameworks
+zipline-reloaded==3.0.4
+backtrader==1.9.78.123
+bt==0.2.9
+Backtesting.py==0.3.3
+vectorbt==0.26.0
+pyqstrat==0.2.1
+pinkfish==1.0.0
+fastquant==0.1.7.1
+fast-trade==1.3.0
+nautilus-trader==1.192.0
+
+# Portfolio Optimization
+PyPortfolioOpt==1.5.5
+Riskfolio-Lib==5.1.2
+skfolio==0.1.1
+cvxpy==1.4.2
+
+# Risk & Performance Analytics
+pyfolio-reloaded==0.9.5
+empyrical-reloaded==0.5.9
+quantstats==0.0.62
+FinQuant==0.2.4
+
+# Factor Analysis
+alphalens-reloaded==0.4.3
+
+# Time Series Analysis
+arch==6.3.0
+pmdarima==2.0.4
+gluon-ts==0.14.3
+tsfresh==0.20.2
+tsmoothie==1.0.4
+functime==0.9.5
+
+# Financial Instruments & Pricing
+QuantLib==1.32
+vollib==1.0.3
+py-vollib==1.0.1
+FinancePy==0.350
+tf-quant-finance==0.0.1.dev29
+rateslib==1.3.2
+
+# Machine Learning for Finance
+mlfinlab==1.5.0
+Qlib==0.9.3
+AlphaPy==2.3.3
+FinRL==0.3.6
+
+# Calendars
+exchange-calendars==4.5.2
+pandas-market-calendars==4.3.3
+bizdays==1.0.10
+
+# Visualization
+mplfinance==0.12.10b0
+plotly==5.18.0
+D-Tale==3.12.0
+finplot==1.9.4
+
+# Options & Derivatives
+finoptions==0.1.3
+
+# Crypto Trading
+ccxt==4.2.25
+freqtrade==2024.1
+
+# Utilities
+requests==2.31.0
+python-dotenv==1.0.1
+aiohttp==3.9.3
+tqdm==4.66.1
+joblib==1.3.2
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Async/Event-Driven
+asyncio==3.4.3
+websockets==12.0
