@@ -60,7 +60,6 @@ talipp>=2.0.0
 # Backtesting & Trading Frameworks
 backtrader>=1.9.0
 bt>=0.2.9
-Backtesting.py>=0.3.0
 vectorbt>=0.26.0
 pyqstrat>=0.2.0
 # pinkfish>=1.0.0 - Commented out due to Python 3.11 compatibility issue
