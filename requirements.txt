@@ -43,8 +43,6 @@ pandas-datareader>=0.10.0
 alpha-vantage>=2.3.0
 alpaca-trade-api>=3.0.0
 alpaca-py>=0.8.2
-# akshare>=1.16.72 - Commented out due to FinanceDataReader dependency conflict
-# tushare - Commented out due to FinanceDataReader dependency conflict
 yahooquery>=2.3.0
 investpy>=1.0.8
 finagg>=0.1.0
