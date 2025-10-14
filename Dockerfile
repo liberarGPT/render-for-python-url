@@ -1,54 +1,38 @@
-# syntax=docker/dockerfile:1
-
-# Base image
 FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# System dependencies including TA-Lib
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       build-essential \
-       gcc \
-       g++ \
-       cmake \
-       libxml2-dev \
-       libxslt1-dev \
-       libffi-dev \
-       curl \
-       wget \
-    && wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz \
-    && tar -xzf ta-lib-0.4.0-src.tar.gz \
-    && cd ta-lib/ \
-    && ./configure --prefix=/usr \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf ta-lib ta-lib-0.4.0-src.tar.gz \
+# Install system dependencies for TA-Lib and other libraries
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies first for better layer caching
-COPY requirements.txt ./
-RUN python -m pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+# Install TA-Lib
+RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
 
-# Copy project files
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
 COPY . .
 
-# Install the package itself (ensures setup.py install_requires are satisfied)
-RUN pip install --no-cache-dir -e .
+# Expose port
+EXPOSE 5000
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:5000/health')"
 
-# Expose the Dash server port
-EXPOSE 7860
-
-# Default command: bind to 0.0.0.0 for container networking
-CMD ["python", "run_webui_dash.py", "--server-name", "0.0.0.0"]
+# Run the application
+CMD ["python", "app.py"]
