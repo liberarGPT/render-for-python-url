@@ -89,7 +89,6 @@ tsmoothie>=1.0.0
 
 # Financial Instruments & Pricing
 QuantLib>=1.32
-vollib>=1.0.3
 py-vollib>=1.0.1
 
 # Machine Learning for Finance
