@@ -40,7 +40,9 @@ ib_async>=0.3.0
 alpaca-py>=0.8.2
 
 # Backtesting
-backtrader>=1.9.76
+backtrader==1.9.78.123
+vectorbt==0.25.5
+PyPortfolioOpt==1.5.5
 
 # Production
 gunicorn==21.2.0
