@@ -41,20 +41,14 @@ exchange-calendars>=4.0.0
 pandas-market-calendars>=4.0.0
 
 # Interactive Brokers
+ib-insync==0.9.85
 
-
-# TD Ameritrade
-# Interactive Brokers
-ib_async>=0.3.0
-
-# Alpaca Trading (modern client)
-alpaca-py>=0.8.2
-
-# Backtesting
-backtrader>=1.9.76
+# Alpaca Trading
+alpaca-py==0.8.2
 
 # Production
 gunicorn==21.2.0
+# Backtesting
 backtrader>=1.9.76
 
 # Utilities
