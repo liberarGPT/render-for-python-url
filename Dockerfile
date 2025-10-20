@@ -3,7 +3,6 @@ FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     libpq-dev \
     curl \
     wget \
@@ -17,15 +16,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_DEFAULT_TIMEOUT=100
-
-# Install TA-Lib using a pre-built wheel for ARM64
-RUN pip install --no-cache-dir numpy && \
-    pip install --no-cache-dir --only-binary :all: \
-    --platform manylinux2014_aarch64 \
-    --implementation cp \
-    --python-version 311 \
-    --target /usr/local/lib/python3.11/site-packages \
-    ta-lib
 
 # Set working directory
 WORKDIR /app
