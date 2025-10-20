@@ -5,21 +5,45 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: alpaca-trading-agent:web
-    container_name: alpaca-trading-agent-web
+    container_name: trading-app
     env_file:
       - .env
     environment:
-      - PORT=7860
-      - TZ=America/New_York        # <-- set container timezone
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+      - TZ=America/New_York
+      - PYTHONUNBUFFERED=1
     ports:
-      - "127.0.0.1:7860:7860"
+      - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
-    command: ["python", "run_webui_dash.py", "--server-name", "0.0.0.0", "--port", "7860"]
     volumes:
-      - data-cache:/app/tradingagents/dataflows/data_cache
-      - /etc/localtime:/etc/localtime:ro   # <-- sync container clock with host
-      - /etc/timezone:/etc/timezone:ro     # <-- propagate host timezone name
+      - .:/app
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
 volumes:
-  data-cache:
+  redis_data:
+    driver: local
