@@ -21,8 +21,8 @@ alpha-vantage==2.3.1
 ccxt>=4.2.100
 
 # Technical Analysis
-ta==0.10.2
-pandas-ta==0.3.14b0
+ta>=0.10.2
+pandas-ta>=0.3.14b0
 
 # Database
 psycopg2-binary==2.9.9
