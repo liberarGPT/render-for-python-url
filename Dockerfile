@@ -7,8 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     curl \
     git \
-    openssh-client && \
-    rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -27,8 +26,8 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt && \
     pip install --no-cache-dir gunicorn==21.2.0
 
-# Install pandas-ta directly
-RUN pip install --no-cache-dir https://github.com/twopirllc/pandas-ta/archive/refs/tags/0.3.14b0.tar.gz
+# Install pandas-ta directly from GitHub main branch
+RUN pip install --no-cache-dir git+https://github.com/twopirllc/pandas-ta.git@0.3.14b0
 
 # Copy application code
 COPY . .
