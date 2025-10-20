@@ -11,7 +11,7 @@ import pandas as pd
 import yfinance as yf
 from ta import add_all_ta_features
 from ib_insync import IB, util
-from tda import auth, client
+from td import oauth as auth, client
 from datetime import datetime, timedelta
 import asyncio
 from sqlalchemy import create_engine
@@ -333,3 +333,42 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
     
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        data = request.get_json()
+        # Placeholder for analysis functionality
+        return jsonify({
+            'status': 'success',
+            'message': 'Analysis endpoint ready',
+            'data': data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        data = request.get_json()
+        # Placeholder for prediction functionality
+        return jsonify({
+            'status': 'success',
+            'message': 'Prediction endpoint ready',
+            'data': data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/backtest', methods=['POST'])
+def backtest():
+    try:
+        data = request.get_json()
+        # Placeholder for backtesting functionality
+        return jsonify({
+            'status': 'success',
+            'message': 'Backtest endpoint ready',
+            'data': data
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
