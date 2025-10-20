@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
@@ -25,9 +24,6 @@ COPY requirements_minimal.txt /tmp/requirements.txt
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt && \
     pip install --no-cache-dir gunicorn==21.2.0
-
-# Install pandas-ta directly from GitHub main branch
-RUN pip install --no-cache-dir git+https://github.com/twopirllc/pandas-ta.git@0.3.14b0
 
 # Copy application code
 COPY . .
