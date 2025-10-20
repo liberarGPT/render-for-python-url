@@ -1,6 +1,14 @@
 # Use official Python 3.11 slim image
 FROM python:3.11-slim
 
+# Install system dependencies, including git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    git \  # Add git here
+    && rm -rf /var/lib/apt/lists/*
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -11,20 +19,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # Set working directory
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install system dependencies for Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    python3-dev \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements_minimal.txt /tmp/requirements.txt
