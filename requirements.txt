@@ -27,7 +27,7 @@ finta>=1.3  # Financial Technical Analysis
 
 # Backtesting
 backtrader==1.9.78.123
-vectorbt==0.25.5
+vectorbt>=0.26.0
 backtesting==0.3.3
 
 # Portfolio & Risk
