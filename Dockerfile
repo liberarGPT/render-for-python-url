@@ -1,12 +1,13 @@
 # Use official Python 3.11 slim image
 FROM python:3.11-slim
 
-# Install system dependencies including git
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
     build-essential \
     libpq-dev \
     curl \
+    git \
+    openssh-client \  # Add SSH client
     && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
