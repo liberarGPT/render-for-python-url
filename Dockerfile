@@ -1,37 +1,14 @@
-# Build stage for TA-Lib
-FROM python:3.11-slim as builder
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Download and install TA-Lib
-RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-    tar -xzf ta-lib-0.4.0-src.tar.gz && \
-    cd ta-lib/ && \
-    ./configure --prefix=/usr && \
-    make -j$(nproc) && \
-    make install && \
-    cd .. && \
-    rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
-
-# Install TA-Lib Python wrapper
-RUN pip install --no-cache-dir numpy && \
-    pip install --no-cache-dir ta-lib
-
-# Final stage
+# Use official Python 3.11 slim image
 FROM python:3.11-slim
 
-# Install runtime dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     libpq-dev \
+    curl \
+    wget \
+    git \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy TA-Lib files from builder
-COPY --from=builder /usr/local /usr/local
-COPY --from=builder /usr/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -40,6 +17,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_DEFAULT_TIMEOUT=100
+
+# Install TA-Lib using a pre-built wheel for ARM64
+RUN pip install --no-cache-dir numpy && \
+    pip install --no-cache-dir --only-binary :all: \
+    --platform manylinux2014_aarch64 \
+    --implementation cp \
+    --python-version 311 \
+    --target /usr/local/lib/python3.11/site-packages \
+    ta-lib
 
 # Set working directory
 WORKDIR /app
