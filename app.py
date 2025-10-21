@@ -3,6 +3,20 @@ from flask_cors import CORS
 from datetime import datetime, timedelta
 import random
 import os
+import pandas as pd
+import numpy as np
+import yfinance as yf
+import ccxt
+import backtrader as bt
+import vectorbt as vbt
+from backtesting import Backtest, Strategy
+import ta
+import finta
+import plotly.graph_objects as go
+import plotly.express as px
+import mplfinance as mpf
+from alpaca_trade_api import REST
+import requests
 
 app = Flask(__name__)
 CORS(app) # Allow all origins for simplicity in Vercel deployment
@@ -431,6 +445,206 @@ def get_alpaca_positions():
     })
 
 # =============================================================================
+# BACKTESTING INTEGRATION
+# =============================================================================
+
+class BacktestEngine:
+    def __init__(self):
+        self.results = {}
+    
+    def run_backtrader_backtest(self, symbol, start_date, end_date, strategy_class, initial_cash=10000):
+        """Run backtest using Backtrader"""
+        try:
+            cerebro = bt.Cerebro()
+            
+            # Add data feed
+            data = bt.feeds.YahooFinanceData(
+                dataname=symbol,
+                fromdate=datetime.strptime(start_date, '%Y-%m-%d'),
+                todate=datetime.strptime(end_date, '%Y-%m-%d')
+            )
+            cerebro.adddata(data)
+            
+            # Add strategy
+            cerebro.addstrategy(strategy_class)
+            
+            # Set initial cash
+            cerebro.broker.setcash(initial_cash)
+            
+            # Add analyzers
+            cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharpe')
+            cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
+            cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
+            
+            # Run backtest
+            results = cerebro.run()
+            
+            # Extract results
+            strat = results[0]
+            sharpe = strat.analyzers.sharpe.get_analysis()
+            drawdown = strat.analyzers.drawdown.get_analysis()
+            returns = strat.analyzers.returns.get_analysis()
+            
+            return {
+                'total_return': returns.get('rtot', 0) * 100,
+                'sharpe_ratio': sharpe.get('sharperatio', 0),
+                'max_drawdown': drawdown.get('max', {}).get('drawdown', 0),
+                'final_value': cerebro.broker.getvalue(),
+                'initial_cash': initial_cash
+            }
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def run_vectorbt_backtest(self, symbol, start_date, end_date, strategy_func, initial_cash=10000):
+        """Run backtest using VectorBT"""
+        try:
+            # Download data
+            data = yf.download(symbol, start=start_date, end=end_date)
+            
+            # Run strategy
+            portfolio = vbt.Portfolio.from_signals(
+                data['Close'],
+                entries=strategy_func(data)['entries'],
+                exits=strategy_func(data)['exits'],
+                init_cash=initial_cash
+            )
+            
+            return {
+                'total_return': portfolio.total_return() * 100,
+                'sharpe_ratio': portfolio.sharpe_ratio(),
+                'max_drawdown': portfolio.max_drawdown() * 100,
+                'final_value': portfolio.value().iloc[-1],
+                'initial_cash': initial_cash
+            }
+        except Exception as e:
+            return {'error': str(e)}
+
+backtest_engine = BacktestEngine()
+
+# =============================================================================
+# TECHNICAL ANALYSIS INTEGRATION
+# =============================================================================
+
+class TechnicalAnalysis:
+    def __init__(self):
+        self.indicators = {}
+    
+    def calculate_indicators(self, data):
+        """Calculate comprehensive technical indicators"""
+        try:
+            df = data.copy()
+            
+            # RSI
+            df['RSI'] = ta.momentum.RSIIndicator(df['Close']).rsi()
+            
+            # MACD
+            macd = ta.trend.MACD(df['Close'])
+            df['MACD'] = macd.macd()
+            df['MACD_signal'] = macd.macd_signal()
+            df['MACD_histogram'] = macd.macd_diff()
+            
+            # Bollinger Bands
+            bb = ta.volatility.BollingerBands(df['Close'])
+            df['BB_upper'] = bb.bollinger_hband()
+            df['BB_middle'] = bb.bollinger_mavg()
+            df['BB_lower'] = bb.bollinger_lband()
+            
+            # Moving Averages
+            df['SMA_20'] = ta.trend.SMAIndicator(df['Close'], window=20).sma_indicator()
+            df['SMA_50'] = ta.trend.SMAIndicator(df['Close'], window=50).sma_indicator()
+            df['EMA_12'] = ta.trend.EMAIndicator(df['Close'], window=12).ema_indicator()
+            df['EMA_26'] = ta.trend.EMAIndicator(df['Close'], window=26).ema_indicator()
+            
+            # Volume indicators
+            df['Volume_SMA'] = ta.volume.VolumeSMAIndicator(df['Close'], df['Volume']).volume_sma()
+            df['OBV'] = ta.volume.OnBalanceVolumeIndicator(df['Close'], df['Volume']).on_balance_volume()
+            
+            # Stochastic
+            stoch = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close'])
+            df['Stoch_K'] = stoch.stoch()
+            df['Stoch_D'] = stoch.stoch_signal()
+            
+            # Williams %R
+            df['Williams_R'] = ta.momentum.WilliamsRIndicator(df['High'], df['Low'], df['Close']).williams_r()
+            
+            return df
+        except Exception as e:
+            return {'error': str(e)}
+
+tech_analysis = TechnicalAnalysis()
+
+# =============================================================================
+# ALPACA TRADING INTEGRATION
+# =============================================================================
+
+class AlpacaTrading:
+    def __init__(self):
+        self.api = None
+        self.connected = False
+    
+    def connect(self, api_key, secret_key, base_url="https://paper-api.alpaca.markets"):
+        """Connect to Alpaca API"""
+        try:
+            self.api = REST(api_key, secret_key, base_url, api_version='v2')
+            # Test connection
+            account = self.api.get_account()
+            self.connected = True
+            return {'status': 'success', 'account': account._raw}
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def get_account(self):
+        """Get account information"""
+        if not self.connected:
+            return {'error': 'Not connected to Alpaca'}
+        try:
+            account = self.api.get_account()
+            return {
+                'buying_power': float(account.buying_power),
+                'cash': float(account.cash),
+                'portfolio_value': float(account.portfolio_value),
+                'equity': float(account.equity),
+                'day_trade_count': account.day_trade_count
+            }
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def get_positions(self):
+        """Get current positions"""
+        if not self.connected:
+            return {'error': 'Not connected to Alpaca'}
+        try:
+            positions = self.api.list_positions()
+            return [{
+                'symbol': pos.symbol,
+                'qty': float(pos.qty),
+                'market_value': float(pos.market_value),
+                'unrealized_pl': float(pos.unrealized_pl),
+                'unrealized_plpc': float(pos.unrealized_plpc),
+                'current_price': float(pos.current_price)
+            } for pos in positions]
+        except Exception as e:
+            return {'error': str(e)}
+    
+    def place_order(self, symbol, qty, side, order_type, time_in_force='day'):
+        """Place a trade order"""
+        if not self.connected:
+            return {'error': 'Not connected to Alpaca'}
+        try:
+            order = self.api.submit_order(
+                symbol=symbol,
+                qty=qty,
+                side=side,
+                type=order_type,
+                time_in_force=time_in_force
+            )
+            return {'status': 'success', 'order': order._raw}
+        except Exception as e:
+            return {'error': str(e)}
+
+alpaca_trading = AlpacaTrading()
+
+# =============================================================================
 # STRATEGY BUILDING ENDPOINTS
 # =============================================================================
 
@@ -467,20 +681,256 @@ def run_backtest():
     """Run a backtest for a strategy"""
     data = request.get_json() or {}
     
-    # Mock backtest results
-    backtest_result = {
-        'strategy_id': data.get('strategy_id'),
-        'start_date': data.get('start_date'),
-        'end_date': data.get('end_date'),
-        'initial_capital': data.get('initial_capital', 10000),
-        'final_capital': random.uniform(8000, 15000),
-        'total_return': random.uniform(-20, 50),
-        'sharpe_ratio': random.uniform(0.5, 2.5),
-        'max_drawdown': random.uniform(-30, -5),
-        'win_rate': random.uniform(0.4, 0.8)
-    }
+    symbol = data.get('symbol', 'AAPL')
+    start_date = data.get('start_date', '2023-01-01')
+    end_date = data.get('end_date', '2024-01-01')
+    initial_capital = data.get('initial_capital', 10000)
+    strategy_type = data.get('strategy_type', 'simple_moving_average')
     
-    return jsonify({'status': 'success', 'backtest': backtest_result})
+    try:
+        # Download data
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(start=start_date, end=end_date)
+        
+        if data.empty:
+            return jsonify({'error': 'No data available for the specified period'}), 400
+        
+        # Calculate technical indicators
+        data_with_indicators = tech_analysis.calculate_indicators(data)
+        
+        # Simple moving average strategy
+        if strategy_type == 'simple_moving_average':
+            data_with_indicators['signal'] = 0
+            data_with_indicators.loc[data_with_indicators['SMA_20'] > data_with_indicators['SMA_50'], 'signal'] = 1
+            data_with_indicators.loc[data_with_indicators['SMA_20'] < data_with_indicators['SMA_50'], 'signal'] = -1
+            
+            # Calculate returns
+            data_with_indicators['returns'] = data_with_indicators['Close'].pct_change()
+            data_with_indicators['strategy_returns'] = data_with_indicators['signal'].shift(1) * data_with_indicators['returns']
+            
+            # Calculate performance metrics
+            total_return = (1 + data_with_indicators['strategy_returns']).cumprod().iloc[-1] - 1
+            sharpe_ratio = data_with_indicators['strategy_returns'].mean() / data_with_indicators['strategy_returns'].std() * np.sqrt(252)
+            max_drawdown = (data_with_indicators['strategy_returns'].cumsum() - data_with_indicators['strategy_returns'].cumsum().expanding().max()).min()
+            
+            backtest_result = {
+                'strategy_id': data.get('strategy_id'),
+                'symbol': symbol,
+                'start_date': start_date,
+                'end_date': end_date,
+                'initial_capital': initial_capital,
+                'final_capital': initial_capital * (1 + total_return),
+                'total_return': total_return * 100,
+                'sharpe_ratio': sharpe_ratio,
+                'max_drawdown': max_drawdown * 100,
+                'win_rate': (data_with_indicators['strategy_returns'] > 0).mean() * 100,
+                'total_trades': abs(data_with_indicators['signal'].diff()).sum() // 2
+            }
+        else:
+            # Mock results for other strategies
+            backtest_result = {
+                'strategy_id': data.get('strategy_id'),
+                'symbol': symbol,
+                'start_date': start_date,
+                'end_date': end_date,
+                'initial_capital': initial_capital,
+                'final_capital': random.uniform(8000, 15000),
+                'total_return': random.uniform(-20, 50),
+                'sharpe_ratio': random.uniform(0.5, 2.5),
+                'max_drawdown': random.uniform(-30, -5),
+                'win_rate': random.uniform(0.4, 0.8),
+                'total_trades': random.randint(10, 100)
+            }
+        
+        return jsonify({'status': 'success', 'backtest': backtest_result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# TECHNICAL ANALYSIS ENDPOINTS
+# =============================================================================
+
+@app.route('/api/technical-analysis/<symbol>', methods=['GET'])
+def get_technical_analysis(symbol):
+    """Get comprehensive technical analysis for a symbol"""
+    try:
+        # Download data
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="1y")
+        
+        if data.empty:
+            return jsonify({'error': 'No data available for symbol'}), 400
+        
+        # Calculate indicators
+        data_with_indicators = tech_analysis.calculate_indicators(data)
+        
+        # Get latest values
+        latest = data_with_indicators.iloc[-1]
+        
+        analysis = {
+            'symbol': symbol,
+            'current_price': float(latest['Close']),
+            'indicators': {
+                'RSI': float(latest['RSI']) if not pd.isna(latest['RSI']) else None,
+                'MACD': float(latest['MACD']) if not pd.isna(latest['MACD']) else None,
+                'MACD_signal': float(latest['MACD_signal']) if not pd.isna(latest['MACD_signal']) else None,
+                'BB_upper': float(latest['BB_upper']) if not pd.isna(latest['BB_upper']) else None,
+                'BB_middle': float(latest['BB_middle']) if not pd.isna(latest['BB_middle']) else None,
+                'BB_lower': float(latest['BB_lower']) if not pd.isna(latest['BB_lower']) else None,
+                'SMA_20': float(latest['SMA_20']) if not pd.isna(latest['SMA_20']) else None,
+                'SMA_50': float(latest['SMA_50']) if not pd.isna(latest['SMA_50']) else None,
+                'Stoch_K': float(latest['Stoch_K']) if not pd.isna(latest['Stoch_K']) else None,
+                'Stoch_D': float(latest['Stoch_D']) if not pd.isna(latest['Stoch_D']) else None,
+                'Williams_R': float(latest['Williams_R']) if not pd.isna(latest['Williams_R']) else None
+            },
+            'signals': {
+                'rsi_signal': 'oversold' if latest['RSI'] < 30 else 'overbought' if latest['RSI'] > 70 else 'neutral',
+                'macd_signal': 'bullish' if latest['MACD'] > latest['MACD_signal'] else 'bearish',
+                'bb_signal': 'overbought' if latest['Close'] > latest['BB_upper'] else 'oversold' if latest['Close'] < latest['BB_lower'] else 'neutral',
+                'ma_signal': 'bullish' if latest['SMA_20'] > latest['SMA_50'] else 'bearish',
+                'stoch_signal': 'oversold' if latest['Stoch_K'] < 20 else 'overbought' if latest['Stoch_K'] > 80 else 'neutral'
+            }
+        }
+        
+        return jsonify({'status': 'success', 'analysis': analysis})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# ALPACA TRADING ENDPOINTS
+# =============================================================================
+
+@app.route('/api/alpaca/connect', methods=['POST'])
+def connect_alpaca():
+    """Connect to Alpaca API"""
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    secret_key = data.get('secret_key')
+    paper_trading = data.get('paper_trading', True)
+    
+    if not api_key or not secret_key:
+        return jsonify({'error': 'API key and secret key required'}), 400
+    
+    base_url = "https://paper-api.alpaca.markets" if paper_trading else "https://api.alpaca.markets"
+    result = alpaca_trading.connect(api_key, secret_key, base_url)
+    return jsonify(result)
+
+@app.route('/api/alpaca/account', methods=['GET'])
+def get_alpaca_account():
+    """Get Alpaca account information"""
+    result = alpaca_trading.get_account()
+    return jsonify(result)
+
+@app.route('/api/alpaca/positions', methods=['GET'])
+def get_alpaca_positions():
+    """Get Alpaca positions"""
+    result = alpaca_trading.get_positions()
+    return jsonify(result)
+
+@app.route('/api/alpaca/orders', methods=['POST'])
+def place_alpaca_order():
+    """Place an order on Alpaca"""
+    data = request.get_json() or {}
+    symbol = data.get('symbol')
+    qty = data.get('qty')
+    side = data.get('side')
+    order_type = data.get('order_type', 'market')
+    time_in_force = data.get('time_in_force', 'day')
+    
+    if not all([symbol, qty, side]):
+        return jsonify({'error': 'symbol, qty, and side required'}), 400
+    
+    result = alpaca_trading.place_order(symbol, qty, side, order_type, time_in_force)
+    return jsonify(result)
+
+# =============================================================================
+# CRYPTO TRADING ENDPOINTS
+# =============================================================================
+
+@app.route('/api/crypto/exchanges', methods=['GET'])
+def get_crypto_exchanges():
+    """Get available crypto exchanges"""
+    try:
+        exchanges = ccxt.exchanges
+        return jsonify({'status': 'success', 'exchanges': exchanges})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/crypto/ticker/<exchange>/<symbol>', methods=['GET'])
+def get_crypto_ticker(exchange, symbol):
+    """Get crypto ticker data"""
+    try:
+        exchange_class = getattr(ccxt, exchange)
+        exchange_instance = exchange_class()
+        ticker = exchange_instance.fetch_ticker(symbol)
+        return jsonify({'status': 'success', 'ticker': ticker})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# =============================================================================
+# VISUALIZATION ENDPOINTS
+# =============================================================================
+
+@app.route('/api/charts/candlestick/<symbol>', methods=['GET'])
+def get_candlestick_chart(symbol):
+    """Generate candlestick chart data"""
+    try:
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="6mo")
+        
+        if data.empty:
+            return jsonify({'error': 'No data available'}), 400
+        
+        # Create candlestick chart
+        fig = go.Figure(data=go.Candlestick(
+            x=data.index,
+            open=data['Open'],
+            high=data['High'],
+            low=data['Low'],
+            close=data['Close'],
+            name=symbol
+        ))
+        
+        fig.update_layout(
+            title=f'{symbol} Candlestick Chart',
+            yaxis_title='Price',
+            xaxis_title='Date'
+        )
+        
+        return jsonify({'status': 'success', 'chart': fig.to_json()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/charts/indicators/<symbol>', methods=['GET'])
+def get_indicators_chart(symbol):
+    """Generate technical indicators chart"""
+    try:
+        ticker = yf.Ticker(symbol)
+        data = ticker.history(period="6mo")
+        
+        if data.empty:
+            return jsonify({'error': 'No data available'}), 400
+        
+        # Calculate indicators
+        data_with_indicators = tech_analysis.calculate_indicators(data)
+        
+        # Create subplot with indicators
+        fig = go.Figure()
+        
+        # Price chart
+        fig.add_trace(go.Scatter(x=data_with_indicators.index, y=data_with_indicators['Close'], name='Close'))
+        fig.add_trace(go.Scatter(x=data_with_indicators.index, y=data_with_indicators['SMA_20'], name='SMA 20'))
+        fig.add_trace(go.Scatter(x=data_with_indicators.index, y=data_with_indicators['SMA_50'], name='SMA 50'))
+        
+        fig.update_layout(
+            title=f'{symbol} Technical Indicators',
+            yaxis_title='Price',
+            xaxis_title='Date'
+        )
+        
+        return jsonify({'status': 'success', 'chart': fig.to_json()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
