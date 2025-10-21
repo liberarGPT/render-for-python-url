@@ -55,8 +55,6 @@ tensorflow-probability==0.21.0
 # Visualization
 plotly==5.17.0
 mplfinance==0.12.10b0
-dash==2.14.2
-dash-bootstrap-components==1.5.0
 
 # OpenBB Integration
 # openbb==4.2.0

@@ -14,7 +14,6 @@ import ta
 import finta
 import plotly.graph_objects as go
 import plotly.express as px
-import mplfinance as mpf
 from alpaca_trade_api import REST
 import requests
 
