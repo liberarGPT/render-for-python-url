@@ -1,13 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-from dotenv import load_dotenv
 from datetime import datetime
-import jwt
-import time
-
-# Load environment variables
-load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -34,7 +28,7 @@ def health_check():
 def analyze():
     """Analyze market data"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         symbol = data.get('symbol', 'AAPL')
         
         # Mock analysis result
@@ -70,7 +64,7 @@ def analyze():
 def predict():
     """Predict price movement"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         symbol = data.get('symbol', 'AAPL')
         timeframe = data.get('timeframe', '1 week')
         
@@ -101,7 +95,7 @@ def predict():
 def backtest():
     """Run backtest"""
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         user_id = data.get('user_id', 'user123')
         strategy_id = data.get('strategy_id', 'strategy456')
         start_date = data.get('start_date', '2023-01-01')
@@ -150,10 +144,11 @@ def backtest():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Vercel handler
+# Vercel handler - this is crucial for Vercel
 def handler(request):
     return app(request.environ, lambda *args: None)
 
+# This is the entry point for Vercel
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
