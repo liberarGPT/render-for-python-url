@@ -57,11 +57,11 @@ plotly==5.17.0
 mplfinance==0.12.10b0
 
 # OpenBB Integration
-# openbb==4.2.0
-# openbb-terminal==4.2.0
+openbb==4.2.0
+openbb-terminal==4.2.0
 
 # MCP Integration
-# mcp==0.1.0
+mcp==0.1.0
 
 # Utils
 python-dateutil==2.8.2
