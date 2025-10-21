@@ -2,10 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
-from supabase import create_client, Client
 from datetime import datetime
-import jwt
-import time
 
 # Load environment variables
 load_dotenv()
@@ -20,148 +17,17 @@ CORS(app, resources={
     "/health": {"origins": ["https://tradespark.app"]}
 })
 
-# Initialize variables
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_ANON_KEY')
-JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')
-
-# Initialize Supabase client
-supabase: Client = None
-supabase_configured = False
-if SUPABASE_URL and SUPABASE_KEY:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        supabase_configured = True
-    except Exception as e:
-        print(f"Supabase client initialization failed: {e}")
-        supabase_configured = False
-
-# Helper function for authentication
-def require_auth(f):
-    def decorated(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if not auth_header:
-            return jsonify({'error': 'Authorization header missing'}), 401
-        
-        try:
-            token = auth_header.split(' ')[1]
-            payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
-            request.user_id = payload['user_id']
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
-        except Exception as e:
-            return jsonify({'error': f'Authentication error: {str(e)}'}), 401
-        return f(*args, **kwargs)
-    decorated.__name__ = f.__name__
-    return decorated
-
-# =============================================================================
-# HEALTH CHECK & SUPABASE TEST
-# =============================================================================
-
+# Health check endpoint
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'supabase_configured': supabase_configured,
         'timestamp': datetime.utcnow().isoformat(),
         'platform': 'vercel'
     })
 
-@app.route('/api/supabase/test', methods=['GET'])
-def test_supabase():
-    """Test Supabase connection"""
-    if not supabase_configured or not supabase:
-        return jsonify({'error': 'Supabase not configured or failed to connect'}), 500
-    
-    try:
-        result = supabase.table('users').select('*').limit(1).execute()
-        return jsonify({
-            'status': 'success',
-            'message': 'Supabase connected successfully',
-            'data': result.data
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# =============================================================================
-# AUTHENTICATION ENDPOINTS
-# =============================================================================
-
-@app.route('/api/auth/register', methods=['POST'])
-def register_user():
-    """Register a new user"""
-    if not supabase_configured or not supabase:
-        return jsonify({'error': 'Supabase not configured'}), 500
-    
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
-
-    try:
-        user_id = f"user_{time.time()}".replace('.', '')
-        new_user = {
-            'id': user_id,
-            'email': email,
-            'hashed_password': 'mock_hashed_password',
-            'created_at': datetime.utcnow().isoformat()
-        }
-        
-        result = supabase.table('users').insert(new_user).execute()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'User registered successfully',
-            'user': result.data[0]
-        }), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/auth/login', methods=['POST'])
-def login_user():
-    """Login a user and return JWT token"""
-    if not supabase_configured or not supabase:
-        return jsonify({'error': 'Supabase not configured'}), 500
-    
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required'}), 400
-
-    try:
-        result = supabase.table('users').select('*').eq('email', email).limit(1).execute()
-        user = result.data[0] if result.data else None
-
-        if user and user['hashed_password'] == 'mock_hashed_password':
-            payload = {
-                'user_id': user['id'],
-                'exp': datetime.utcnow().timestamp() + 3600
-            }
-            token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
-            
-            return jsonify({
-                'status': 'success',
-                'message': 'Logged in successfully',
-                'access_token': token,
-                'token_type': 'bearer'
-            })
-        else:
-            return jsonify({'error': 'Invalid credentials'}), 401
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# =============================================================================
-# ROOT-LEVEL ENDPOINTS FOR FRONTEND COMPATIBILITY
-# =============================================================================
-
+# Root-level endpoints for frontend compatibility
 @app.route('/analyze', methods=['POST'])
 def analyze():
     """Analyze market data"""
@@ -281,28 +147,6 @@ def backtest():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# =============================================================================
-# API ENDPOINTS (for future use)
-# =============================================================================
-
-@app.route('/api/analyze', methods=['POST'])
-@require_auth
-def analyze_api():
-    """Analyze market data - API version"""
-    return analyze()
-
-@app.route('/api/predict', methods=['POST'])
-@require_auth
-def predict_api():
-    """Predict price movement - API version"""
-    return predict()
-
-@app.route('/api/backtest', methods=['POST'])
-@require_auth
-def backtest_api():
-    """Run backtest - API version"""
-    return backtest()
 
 # Vercel handler
 def handler(request):
