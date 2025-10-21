@@ -286,7 +286,7 @@ def get_quant_indicators():
     
     return jsonify({
         'status': 'success',
-        'symbol': symbol,
+            'symbol': symbol,
         'indicators': {
             'RSI': random.uniform(30, 70),
             'MACD': random.uniform(-5, 5),
@@ -418,8 +418,8 @@ def get_chat_messages(session_id):
 def get_alpaca_account():
     """Get Alpaca account information"""
     # This would integrate with actual Alpaca API
-    return jsonify({
-        'status': 'success',
+            return jsonify({
+                'status': 'success',
         'account': {
             'buying_power': 10000.00,
             'cash': 5000.00,
@@ -431,8 +431,8 @@ def get_alpaca_account():
 @app.route('/api/alpaca/positions', methods=['GET'])
 def get_alpaca_positions():
     """Get Alpaca positions"""
-    return jsonify({
-        'status': 'success',
+        return jsonify({
+            'status': 'success',
         'positions': [
             {
                 'symbol': 'AAPL',
@@ -515,7 +515,7 @@ class BacktestEngine:
                 'final_value': portfolio.value().iloc[-1],
                 'initial_cash': initial_cash
             }
-        except Exception as e:
+    except Exception as e:
             return {'error': str(e)}
 
 backtest_engine = BacktestEngine()
@@ -622,7 +622,7 @@ class AlpacaTrading:
                 'unrealized_plpc': float(pos.unrealized_plpc),
                 'current_price': float(pos.current_price)
             } for pos in positions]
-        except Exception as e:
+    except Exception as e:
             return {'error': str(e)}
     
     def place_order(self, symbol, qty, side, order_type, time_in_force='day'):
@@ -841,6 +841,84 @@ def place_alpaca_order():
     
     result = alpaca_trading.place_order(symbol, qty, side, order_type, time_in_force)
     return jsonify(result)
+
+@app.route('/api/ai-trading-recommendations', methods=['GET'])
+def get_ai_trading_recommendations():
+    """Get AI-powered trading recommendations"""
+    try:
+        # Mock AI recommendations for now
+        recommendations = [
+            {
+                "symbol": "NVDA",
+                "action": "BUY",
+                "confidence": 0.85,
+                "reasoning": "Strong AI chip demand, positive earnings outlook, technical indicators showing bullish momentum",
+                "suggested_quantity": 10,
+                "suggested_stop_loss": 420.00,
+                "suggested_take_profit": 500.00,
+                "risk_level": "medium"
+            },
+            {
+                "symbol": "TSLA",
+                "action": "SELL",
+                "confidence": 0.70,
+                "reasoning": "Overvalued based on fundamentals, potential headwinds in EV market, technical resistance at current levels",
+                "suggested_quantity": 5,
+                "suggested_stop_loss": 250.00,
+                "suggested_take_profit": 200.00,
+                "risk_level": "high"
+            },
+            {
+                "symbol": "AAPL",
+                "action": "BUY",
+                "confidence": 0.75,
+                "reasoning": "Strong iPhone sales, services growth, defensive stock with good dividend yield",
+                "suggested_quantity": 15,
+                "suggested_stop_loss": 170.00,
+                "suggested_take_profit": 200.00,
+                "risk_level": "low"
+            }
+        ]
+        
+        return jsonify({
+            'status': 'success',
+            'recommendations': recommendations
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai-trade-assistance', methods=['POST'])
+def get_ai_trade_assistance():
+    """Get AI assistance for trade parameters"""
+    try:
+        data = request.get_json() or {}
+        symbol = data.get('symbol', 'AAPL')
+        current_price = data.get('current_price', 150.00)
+        account_balance = data.get('account_balance', 10000)
+        
+        # Mock AI assistance logic
+        risk_percentage = 0.02  # 2% risk per trade
+        max_position_size = account_balance * risk_percentage / current_price
+        
+        # Calculate stop loss and take profit based on volatility
+        stop_loss_percentage = 0.05  # 5% stop loss
+        take_profit_percentage = 0.10  # 10% take profit
+        
+        assistance = {
+            "suggested_quantity": int(max_position_size),
+            "suggested_stop_loss": round(current_price * (1 - stop_loss_percentage), 2),
+            "suggested_take_profit": round(current_price * (1 + take_profit_percentage), 2),
+            "risk_reward_ratio": 2.0,
+            "position_size_percentage": (max_position_size * current_price / account_balance) * 100,
+            "reasoning": f"AI suggests {int(max_position_size)} shares based on 2% risk management. Stop loss at ${round(current_price * (1 - stop_loss_percentage), 2)} and take profit at ${round(current_price * (1 + take_profit_percentage), 2)} for a 2:1 risk-reward ratio."
+        }
+        
+        return jsonify({
+            'status': 'success',
+            'assistance': assistance
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # =============================================================================
 # CRYPTO TRADING ENDPOINTS
