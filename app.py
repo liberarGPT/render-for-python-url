@@ -58,6 +58,7 @@ def health_check():
         'status': 'healthy',
         'platform': 'vercel',
         'trading_agents_available': TRADING_AGENTS_AVAILABLE,
+        'version': '2.0.0',
         'timestamp': datetime.utcnow().isoformat()
     })
 
