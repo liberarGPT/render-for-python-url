@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime, timedelta
-import random
+import requests
+import json
 import os
+import random
 
 app = Flask(__name__)
-CORS(app) # Allow all origins for simplicity in Vercel deployment
+CORS(app)
 
 # =============================================================================
 # SUPABASE INTEGRATION
@@ -43,6 +45,11 @@ class OpenBBIntegration:
         try:
             if not self.pat_token:
                 return {"error": "OpenBB PAT token not set"}
+            
+            headers = {
+                "Authorization": f"Bearer {self.pat_token}",
+                "Content-Type": "application/json"
+            }
             
             # Mock data for now - replace with actual OpenBB API calls
             return {
